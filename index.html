@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electro Al-Quds - Gestion & Ventes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Firebase Compat SDK (Realtime Database) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+    <style>
+        .brand-green { color: #1e6b43; }
+        .bg-brand-green { background-color: #1e6b43; }
+        .brand-red { color: #8a1c32; }
+        .bg-brand-red { background-color: #8a1c32; }
+        .tab-btn:hover {
+            background-color: #278555 !important;
+            color: #ffffff !important;
+        }
+        @media print {
+            body * { visibility: hidden; }
+            #invoice-modal, #invoice-modal * { visibility: visible; }
+            #invoice-modal { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: white; z-index: 9999; padding: 10px; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <!-- Navbar with logo.png -->
+    <header class="bg-slate-900 text-white shadow-md border-b-4 border-[#1e6b43] no-print">
+        <div class="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3" style="display: flex; align-items: center; gap: 12px;">
+                <img src="logo.png" alt="Logo Electro Al-Quds" style="width: 48px; height: 48px; object-fit: contain; border-radius: 8px; background: white; padding: 2px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div>
+                    <h1 class="text-lg font-bold tracking-wide flex items-center gap-2" style="font-size: 1.1rem; font-weight: bold; margin: 0;">
+                        <span style="color: #1e6b43;">ELECTRO</span> <span style="color: #8a1c32;">AL-QUDS</span>
+                    </h1>
+                    <p style="font-size: 0.75rem; color: #9ca3af; margin: 0;">Computers • Phones • Accessories</p>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <span id="sync-status" style="font-size: 0.75rem; background: #1e293b; color: #fbbf24; padding: 4px 10px; border-radius: 9999px; border: 1px solid #334155;">
+                    <i class="fa-solid fa-cloud-arrow-up mr-1"></i>Connexion Firebase...
+                </span>
+                <div id="live-clock" class="text-sm bg-slate-800 px-3 py-1 rounded text-emerald-400 font-mono shadow-inner" style="background: #1e293b; padding: 4px 12px; border-radius: 4px; color: #34d399; font-family: monospace;"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="container mx-auto px-4 py-6 no-print" style="max-width: 1200px; margin: 0 auto; padding: 24px;">
+
+        <!-- Navigation Tabs -->
+        <div class="flex flex-wrap gap-2 mb-6 border-b pb-3" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px;">
+            <button onclick="switchTab('stats')" class="tab-btn px-4 py-2 bg-[#1e6b43] text-white rounded-lg shadow font-medium transition active-tab" data-target="stats" style="background: #1e6b43; color: white; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 500;"><i class="fa-solid fa-chart-line mr-2"></i>Statistiques</button>
+            <button onclick="switchTab('ventes')" class="tab-btn px-4 py-2 bg-white text-gray-700 hover:bg-gray-100 rounded-lg shadow font-medium transition" data-target="ventes" style="background: white; color: #374151; padding: 8px 16px; border-radius: 8px; border: 1px solid #d1d5db; cursor: pointer; font-weight: 500;"><i class="fa-solid fa-cash-register mr-2"></i>Ventes & Bénéfices</button>
+            <button onclick="switchTab('reparations')" class="tab-btn px-4 py-2 bg-white text-gray-700 hover:bg-gray-100 rounded-lg shadow font-medium transition" data-target="reparations" style="background: white; color: #374151; padding: 8px 16px; border-radius: 8px; border: 1px solid #d1d5db; cursor: pointer; font-weight: 500;"><i class="fa-solid fa-screwdriver-wrench mr-2"></i>SAV & Réparations</button>
+            <button onclick="switchTab('iptv')" class="tab-btn px-4 py-2 bg-white text-gray-700 hover:bg-gray-100 rounded-lg shadow font-medium transition" data-target="iptv" style="background: white; color: #374151; padding: 8px 16px; border-radius: 8px; border: 1px solid #d1d5db; cursor: pointer; font-weight: 500;"><i class="fa-solid fa-tv mr-2"></i>Abonnements IPTV</button>
+            <button onclick="switchTab('credits')" class="tab-btn px-4 py-2 bg-white text-gray-700 hover:bg-gray-100 rounded-lg shadow font-medium transition" data-target="credits" style="background: white; color: #374151; padding: 8px 16px; border-radius: 8px; border: 1px solid #d1d5db; cursor: pointer; font-weight: 500;"><i class="fa-solid fa-address-book mr-2"></i>Crédits & Dettes</button>
+            <button onclick="switchTab('achats')" class="tab-btn px-4 py-2 bg-white text-gray-700 hover:bg-gray-100 rounded-lg shadow font-medium transition" data-target="achats" style="background: white; color: #374151; padding: 8px 16px; border-radius: 8px; border: 1px solid #d1d5db; cursor: pointer; font-weight: 500;"><i class="fa-solid fa-bag-shopping mr-2"></i>Achats & Stock</button>
+        </div>
+
+        <!-- TAB 0: STATISTIQUES AVEC FILTRE MOIS -->
+        <section id="stats" class="tab-content">
+            <div class="bg-white p-4 rounded-xl shadow mb-6 flex flex-wrap items-center justify-between gap-4" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+                <div class="flex items-center gap-3" style="display: flex; align-items: center; gap: 12px;">
+                    <label class="font-bold text-slate-700" style="font-weight: bold; color: #334155;"><i class="fa-solid fa-calendar-days text-[#1e6b43] mr-2"></i>Sélectionner le Mois :</label>
+                    <select id="filter-month" onchange="updateStatistics()" class="p-2 border rounded-lg outline-none font-semibold text-slate-800 bg-gray-50" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 600;">
+                        <option value="all">Tous les mois (Global)</option>
+                        <option value="01">Janvier</option>
+                        <option value="02">Février</option>
+                        <option value="03">Mars</option>
+                        <option value="04">Avril</option>
+                        <option value="05">Mai</option>
+                        <option value="06">Juin</option>
+                        <option value="07">Juillet</option>
+                        <option value="08">Août</option>
+                        <option value="09">Septembre</option>
+                        <option value="10">Octobre</option>
+                        <option value="11">Novembre (Mois 11)</option>
+                        <option value="12">Décembre</option>
+                    </select>
+                </div>
+                <div id="selected-month-label" class="text-xs font-bold bg-emerald-100 text-[#1e6b43] px-3 py-1.5 rounded-full" style="background: #d1fae5; color: #1e6b43; padding: 6px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: bold;">Affichage global</div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; margin-bottom: 24px;">
+                <div class="bg-white p-5 rounded-xl shadow border-l-4 border-[#1e6b43]" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid #1e6b43; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium" style="font-size: 0.875rem; color: #6b7280; margin: 0;">Ventes (Période)</p>
+                        <h3 id="stat-semaine" class="text-2xl font-bold text-slate-800 mt-1" style="font-size: 1.5rem; font-weight: bold; color: #1e293b; margin: 4px 0 0 0;">0.00 DH</h3>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded-full text-[#1e6b43] text-xl" style="background: #d1fae5; padding: 12px; border-radius: 50%; color: #1e6b43;"><i class="fa-solid fa-calendar-week"></i></div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow border-l-4 border-blue-600" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid #2563eb; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium" style="font-size: 0.875rem; color: #6b7280; margin: 0;">Chiffre d'Affaires (Mois)</p>
+                        <h3 id="stat-mois" class="text-2xl font-bold text-slate-800 mt-1" style="font-size: 1.5rem; font-weight: bold; color: #1e293b; margin: 4px 0 0 0;">0.00 DH</h3>
+                    </div>
+                    <div class="bg-blue-100 p-3 rounded-full text-blue-600 text-xl" style="background: #dbeafe; padding: 12px; border-radius: 50%; color: #2563eb;"><i class="fa-solid fa-calendar-days"></i></div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow border-l-4 border-emerald-500" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid #10b981; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium" style="font-size: 0.875rem; color: #6b7280; margin: 0;">Bénéfice Net (Mois)</p>
+                        <h3 id="stat-benefice" class="text-2xl font-bold text-emerald-600 mt-1" style="font-size: 1.5rem; font-weight: bold; color: #10b981; margin: 4px 0 0 0;">0.00 DH</h3>
+                    </div>
+                    <div class="bg-emerald-100 p-3 rounded-full text-emerald-600 text-xl" style="background: #d1fae5; padding: 12px; border-radius: 50%; color: #10b981;"><i class="fa-solid fa-wallet"></i></div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+                <div class="bg-white p-5 rounded-xl shadow" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <h3 class="text-md font-bold text-slate-700 mb-4" style="font-weight: bold; color: #334155; margin-bottom: 16px;"><i class="fa-solid fa-chart-column text-[#1e6b43] mr-2"></i>Évolution des Ventes (En الأعمدة)</h3>
+                    <div class="relative h-64" style="height: 250px; position: relative;"><canvas id="weeklyChart"></canvas></div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <h3 class="text-md font-bold text-slate-700 mb-4" style="font-weight: bold; color: #334155; margin-bottom: 16px;"><i class="fa-solid fa-chart-pie text-blue-600 mr-2"></i>Aperçu Global Activité</h3>
+                    <div class="relative h-64" style="height: 250px; position: relative;"><canvas id="monthlyChart"></canvas></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 1: VENTES & BÉNÉFICES -->
+        <section id="ventes" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+                <div class="bg-white p-5 rounded-xl shadow border-t-2 border-[#1e6b43]" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-top: 4px solid #1e6b43;">
+                    <h2 id="v-form-title" class="text-lg font-bold mb-4 text-slate-800" style="font-size: 1.1rem; font-weight: bold; color: #1e293b; margin-bottom: 16px;"><i class="fa-solid fa-cart-plus text-[#1e6b43] mr-2"></i>Nouvelle Vente</h2>
+                    <form id="vente-form" onsubmit="saveVente(event)" style="display: flex; flex-direction: column; gap: 12px;">
+                        <input type="hidden" id="v-id">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Client</label>
+                                <button type="button" onclick="setClientComptoir()" style="font-size: 0.75rem; color: #1e6b43; background: none; border: none; cursor: pointer; font-weight: 600;">⚡ Client de passage</button>
+                            </div>
+                            <input type="text" id="v-client" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;" placeholder="Nom du client">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Numéro WhatsApp (optionnel)</label>
+                            <input type="text" id="v-phone" style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;" placeholder="+2126xxxxxxxx">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Produit / Article</label>
+                            <input type="text" id="v-produit" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;" placeholder="Ex: PC Portable / Coque">
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                            <div>
+                                <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Qté</label>
+                                <input type="number" id="v-qte" value="1" min="1" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">P. Achat</label>
+                                <input type="number" step="0.01" id="v-achat" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;" placeholder="0.00">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">P. Vente</label>
+                                <input type="number" step="0.01" id="v-prix" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Type de Règlement</label>
+                            <select id="v-paiement" style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; font-weight: 600;">
+                                <option value="Espèces">Espèces (Comptoir)</option>
+                                <option value="Crédit">Crédit (Ajouter aux dettes)</option>
+                            </select>
+                        </div>
+                        <button type="submit" id="v-btn" style="width: 100%; background: #1e6b43; color: white; padding: 10px; border-radius: 8px; border: none; font-weight: 500; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">Valider la Vente</button>
+                    </form>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow overflow-x-auto" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-x: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+                        <h2 style="font-size: 1.1rem; font-weight: bold; color: #1e293b; margin: 0;">Historique des Ventes</h2>
+                        <input type="text" id="search-ventes" onkeyup="renderVentes()" placeholder="Rechercher une vente..." style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; width: 250px; font-size: 0.875rem;">
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="background: #f8fafc; color: #4b5563; font-size: 0.875rem;">
+                                <th style="padding: 12px;">Date</th>
+                                <th style="padding: 12px;">Client</th>
+                                <th style="padding: 12px;">Produit</th>
+                                <th style="padding: 12px;">Total</th>
+                                <th style="padding: 12px;">Paiement</th>
+                                <th style="padding: 12px; color: #10b981;">Bénéfice</th>
+                                <th style="padding: 12px; text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ventes-table" style="font-size: 0.875rem;"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: REPARATIONS / SAV -->
+        <section id="reparations" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+                <div class="bg-white p-5 rounded-xl shadow border-t-2 border-[#1e6b43]" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-top: 4px solid #1e6b43;">
+                    <h2 id="sav-form-title" style="font-size: 1.1rem; font-weight: bold; color: #1e293b; margin-bottom: 16px;"><i class="fa-solid fa-wrench text-[#1e6b43] mr-2"></i>Nouvel Appareil en Réparation</h2>
+                    <form id="sav-form" onsubmit="saveSav(event)" style="display: flex; flex-direction: column; gap: 12px;">
+                        <input type="hidden" id="sav-id">
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Nom du Client</label>
+                            <input type="text" id="sav-client" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;" placeholder="Nom du client">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Numéro WhatsApp</label>
+                            <input type="text" id="sav-phone" style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;" placeholder="+2126xxxxxxxx">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Appareil (Modèle)</label>
+                            <input type="text" id="sav-appareil" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;" placeholder="Ex: iPhone 12 / PC HP">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Panne / Problème</label>
+                            <textarea id="sav-panne" rows="2" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;" placeholder="Description..."></textarea>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <div>
+                                <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Coût (DH)</label>
+                                <input type="number" step="0.01" id="sav-prix" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Paiement</label>
+                                <select id="sav-paiement" style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; font-weight: 600;">
+                                    <option value="Payé">Payé</option>
+                                    <option value="Crédit">Crédit</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Statut</label>
+                            <select id="sav-statut" style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                                <option value="En cours">En cours</option>
+                                <option value="Réparé">Réparé</option>
+                                <option value="Livré">Livré</option>
+                            </select>
+                        </div>
+                        <button type="submit" id="sav-btn" style="width: 100%; background: #1e6b43; color: white; padding: 10px; border-radius: 8px; border: none; font-weight: 500; cursor: pointer;">Enregistrer SAV</button>
+                    </form>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow overflow-x-auto" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow-x: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+                        <h2 style="font-size: 1.1rem; font-weight: bold; color: #1e293b; margin: 0;">Suivi des Réparations</h2>
+                        <input type="text" id="search-sav" onkeyup="renderSav()" placeholder="Rechercher SAV..." style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; width: 250px; font-size: 0.875rem;">
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="background: #f8fafc; color: #4b5563; font-size: 0.875rem;">
+                                <th style="padding: 12px;">Date</th>
+                                <th style="padding: 12px;">Client</th>
+                                <th style="padding: 12px;">Appareil</th>
+                                <th style="padding: 12px;">Panne</th>
+                                <th style="padding: 12px;">Prix</th>
+                                <th style="padding: 12px;">Paiement</th>
+                                <th style="padding: 12px;">Statut</th>
+                                <th style="padding: 12px; text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sav-table" style="font-size: 0.875rem;"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: IPTV -->
+        <section id="iptv" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+                <div class="bg-white p-5 rounded-xl shadow border-t-2 border-[#1e6b43]" style="background: white; padding: 20px; border-radius: 12px; border-top: 4px solid #1e6b43;">
+                    <h2 id="iptv-form-title" style="font-size: 1.1rem; font-weight: bold; color: #1e293b; margin-bottom: 16px;"><i class="fa-solid fa-satellite-dish text-[#1e6b43] mr-2"></i>Nouvel Abonnement IPTV</h2>
+                    <form id="iptv-form" onsubmit="saveIptv(event)" style="display: flex; flex-direction: column; gap: 12px;">
+                        <input type="hidden" id="iptv-id">
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Client</label>
+                            <input type="text" id="iptv-client" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;" placeholder="Nom du client">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Serveur / Fournisseur</label>
+                            <input type="text" id="iptv-serveur" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;" placeholder="Ex: Cobra / Volcano">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <div>
+                                <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Durée (Mois)</label>
+                                <input type="number" id="iptv-duree" value="12" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Prix (DH)</label>
+                                <input type="number" step="0.01" id="iptv-prix" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Date d'expiration</label>
+                            <input type="date" id="iptv-exp" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                        </div>
+                        <button type="submit" id="iptv-btn" style="width: 100%; background: #1e6b43; color: white; padding: 10px; border-radius: 8px; border: none; font-weight: 500; cursor: pointer;">Ajouter Abonnement</button>
+                    </form>
+                </div>
+                <div class="lg:col-span-2 bg-white p-5 rounded-xl shadow overflow-x-auto" style="background: white; padding: 20px; border-radius: 12px; overflow-x: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+                        <h2 style="font-size: 1.1rem; font-weight: bold; color: #1e293b; margin: 0;">Gestion IPTV</h2>
+                        <input type="text" id="search-iptv" onkeyup="renderIptv()" placeholder="Rechercher IPTV..." style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; width: 250px; font-size: 0.875rem;">
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="background: #f8fafc; color: #4b5563; font-size: 0.875rem;">
+                                <th style="padding: 12px;">Client</th>
+                                <th style="padding: 12px;">Serveur</th>
+                                <th style="padding: 12px;">Prix</th>
+                                <th style="padding: 12px;">Expiration</th>
+                                <th style="padding: 12px; text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="iptv-table" style="font-size: 0.875rem;"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: CREDITS & DETTES -->
+        <section id="credits" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+                <!-- Crédits Clients -->
+                <div class="bg-white p-5 rounded-xl shadow border-t-2 border-[#8a1c32]" style="background: white; padding: 20px; border-radius: 12px; border-top: 4px solid #8a1c32;">
+                    <h2 id="credit-form-title" style="font-size: 1.1rem; font-weight: bold; color: #1e293b; margin-bottom: 16px;"><i class="fa-solid fa-hand-holding-dollar text-[#8a1c32] mr-2"></i>ناس كيتسالوني (Crédits Clients)</h2>
+                    <form id="credit-form" onsubmit="saveCredit(event)" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+                        <input type="hidden" id="c-id">
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Nom du Client</label>
+                            <input type="text" id="c-client" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Numéro WhatsApp</label>
+                            <input type="text" id="c-phone" style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Description / Motif</label>
+                            <input type="text" id="c-desc" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Montant dû (DH)</label>
+                            <input type="number" step="0.01" id="c-montant" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                        </div>
+                        <button type="submit" id="c-btn" style="width: 100%; background: #8a1c32; color: white; padding: 10px; border-radius: 8px; border: none; font-weight: 500; cursor: pointer;">Ajouter Crédit Client</button>
+                    </form>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+                        <thead>
+                            <tr style="background: #f8fafc; color: #4b5563;">
+                                <th style="padding: 8px;">Client / Motif</th>
+                                <th style="padding: 8px;">Montant</th>
+                                <th style="padding: 8px; text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="credits-table"></tbody>
+                    </table>
+                </div>
+
+                <!-- Dettes Fournisseurs -->
+                <div class="bg-white p-5 rounded-xl shadow border-t-2 border-orange-600" style="background: white; padding: 20px; border-radius: 12px; border-top: 4px solid #ea580c;">
+                    <h2 id="dette-form-title" style="font-size: 1.1rem; font-weight: bold; color: #1e293b; margin-bottom: 16px;"><i class="fa-solid fa-file-invoice-dollar text-orange-600 mr-2"></i>ناس كنتسالهم (Dettes Fournisseurs)</h2>
+                    <form id="dette-form" onsubmit="saveDette(event)" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+                        <input type="hidden" id="d-id">
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Nom du Fournisseur</label>
+                            <input type="text" id="d-fournisseur" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Numéro WhatsApp</label>
+                            <input type="text" id="d-phone" style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Description</label>
+                            <input type="text" id="d-desc" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Montant à payer (DH)</label>
+                            <input type="number" step="0.01" id="d-montant" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                        </div>
+                        <button type="submit" id="d-btn" style="width: 100%; background: #ea580c; color: white; padding: 10px; border-radius: 8px; border: none; font-weight: 500; cursor: pointer;">Ajouter Dette Fournisseur</button>
+                    </form>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+                        <thead>
+                            <tr style="background: #f8fafc; color: #4b5563;">
+                                <th style="padding: 8px;">Fournisseur / Motif</th>
+                                <th style="padding: 8px;">Montant</th>
+                                <th style="padding: 8px; text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dettes-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: ACHATS -->
+        <section id="achats" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+                <div class="bg-white p-5 rounded-xl shadow border-t-2 border-[#1e6b43]" style="background: white; padding: 20px; border-radius: 12px; border-top: 4px solid #1e6b43;">
+                    <h2 id="achat-form-title" style="font-size: 1.1rem; font-weight: bold; color: #1e293b; margin-bottom: 16px;"><i class="fa-solid fa-boxes-stacked text-[#1e6b43] mr-2"></i>Nouvel Achat / Stock</h2>
+                    <form id="achat-form" onsubmit="saveAchat(event)" style="display: flex; flex-direction: column; gap: 12px;">
+                        <input type="hidden" id="a-id">
+                        <div>
+                            <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Fournisseur / Article</label>
+                            <input type="text" id="a-fournisseur" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <div>
+                                <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Quantité</label>
+                                <input type="number" id="a-qte" value="1" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">Coût Total (DH)</label>
+                                <input type="number" step="0.01" id="a-prix" required style="width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;" placeholder="0.00">
+                            </div>
+                        </div>
+                        <button type="submit" id="a-btn" style="width: 100%; background: #1e6b43; color: white; padding: 10px; border-radius: 8px; border: none; font-weight: 500; cursor: pointer;">Enregistrer l'Achat</button>
+                    </form>
+                </div>
+                <div class="lg:col-span-2 bg-white p-5 rounded-xl shadow overflow-x-auto" style="background: white; padding: 20px; border-radius: 12px; overflow-x: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+                        <h2 style="font-size: 1.1rem; font-weight: bold; color: #1e293b; margin: 0;">Historique des Achats</h2>
+                        <input type="text" id="search-achats" onkeyup="renderAchats()" placeholder="Rechercher achat..." style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; width: 250px; font-size: 0.875rem;">
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="background: #f8fafc; color: #4b5563; font-size: 0.875rem;">
+                                <th style="padding: 12px;">Date</th>
+                                <th style="padding: 12px;">Article / Fournisseur</th>
+                                <th style="padding: 12px;">Qté</th>
+                                <th style="padding: 12px;">Coût Total</th>
+                                <th style="padding: 12px; text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="achats-table" style="font-size: 0.875rem;"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Professional Invoice Modal -->
+    <div id="invoice-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 50;">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-6 relative border-t-8 border-[#1e6b43] max-h-[90vh] overflow-y-auto" style="background: white; width: 100%; max-width: 600px; padding: 24px; border-radius: 16px; position: relative;">
+            <button onclick="closeInvoice()" style="position: absolute; top: 12px; right: 12px; background: none; border: none; font-size: 1.25rem; cursor: pointer; color: #6b7280;"><i class="fa-solid fa-xmark"></i></button>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #065f46; padding-bottom: 16px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img src="logo.png" alt="Logo Electro Al-Quds" style="width: 64px; height: 64px; object-fit: contain; border-radius: 12px; border: 2px solid #1e6b43; background: white;">
+                    <div>
+                        <h2 style="font-size: 1.25rem; font-weight: 900; color: #0f172a; margin: 0;">ELECTRO <span style="color: #8a1c32;">AL-QUDS</span></h2>
+                        <p style="font-size: 0.75rem; color: #1e6b43; font-weight: 600; margin: 0;">Informatique • Téléphonie • Accessoires</p>
+                        <p style="font-size: 0.7rem; color: #6b7280; margin: 0;">Tél: +212 6XXXXXXXX</p>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <span style="background: #1e6b43; color: white; font-size: 0.75rem; font-weight: bold; padding: 4px 12px; border-radius: 9999px;">Facture</span>
+                    <p id="inv-number" style="font-size: 0.75rem; font-family: monospace; font-weight: bold; color: #334155; margin: 8px 0 0 0;">N°: FA-2026-001</p>
+                    <p id="inv-date" style="font-size: 0.7rem; color: #6b7280; margin: 2px 0 0 0;">Date: --/--/----</p>
+                </div>
+            </div>
+
+            <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #e2e8f0;">
+                <div>
+                    <p style="font-size: 0.65rem; color: #94a3b8; font-weight: bold; margin: 0;">Facturé à / Client:</p>
+                    <h4 id="inv-client" style="font-weight: bold; color: #1e293b; font-size: 0.875rem; margin: 2px 0 0 0;">-</h4>
+                </div>
+                <div style="text-align: right;">
+                    <span style="font-size: 0.65rem; color: #94a3b8; font-weight: bold; display: block; margin: 0;">Mode de règlement</span>
+                    <span id="inv-mode" style="font-size: 0.75rem; font-weight: 600; color: #334155; background: white; padding: 4px 8px; border-radius: 4px; border: 1px solid #cbd5e1;">Espèces</span>
+                </div>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 0.75rem;">
+                <thead>
+                    <tr style="background: #0f172a; color: white;">
+                        <th style="padding: 10px; border-top-left-radius: 8px; border-bottom-left-radius: 8px;">Description / Article</th>
+                        <th style="padding: 10px; text-align: center;">Quantité</th>
+                        <th style="padding: 10px; text-align: right;">Prix Unitaire</th>
+                        <th style="padding: 10px; text-align: right; border-top-right-radius: 8px; border-bottom-right-radius: 8px;">Montant Total</th>
+                    </tr>
+                </thead>
+                <tbody id="inv-items"></tbody>
+            </table>
+
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+                <div style="width: 220px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 12px; border-radius: 8px; text-align: right;">
+                    <p style="font-size: 0.65rem; color: #047857; font-weight: bold; margin: 0;">TOTAL À PAYER</p>
+                    <h3 id="inv-total" style="font-size: 1.25rem; font-weight: 900; color: #1e6b43; margin: 2px 0 0 0;">0.00 DH</h3>
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; text-align: center; font-size: 0.7rem; color: #94a3b8;">
+                <p style="font-weight: 600; color: #475569; margin: 0;">Merci pour votre confiance ! À bientôt chez Electro Al-Quds.</p>
+                <p style="margin: 2px 0 0 0;">Cette facture tient lieu de bon de garantie.</p>
+            </div>
+
+            <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px;" class="no-print">
+                <button onclick="closeInvoice()" style="padding: 8px 16px; background: #e2e8f0; color: #334155; border: none; border-radius: 8px; font-size: 0.75rem; cursor: pointer;">Fermer</button>
+                <button onclick="window.print()" style="padding: 8px 16px; background: #1e6b43; color: white; border: none; border-radius: 8px; font-size: 0.75rem; cursor: pointer;"><i class="fa-solid fa-print mr-1"></i>Imprimer / PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic + Firebase Realtime Database Sync -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9AcWYbp2JBBGxKtXka7RGv0bYnrrkvZ0",
+            authDomain: "electroalquds-fb838.firebaseapp.com",
+            databaseURL: "https://electroalquds-fb838-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "electroalquds-fb838",
+            storageBucket: "electroalquds-fb838.firebasestorage.app",
+            messagingSenderId: "743831729257",
+            appId: "1:743831729257:web:97d0146de1c435c91d1ef8",
+            measurementId: "G-SR6QFT7VZD"
+        };
+
+        let db = null;
+        const DB_ROOT = "electro_alquds_shop";
+        const DATA_KEYS = ['ventes', 'sav', 'iptv', 'credits', 'dettes', 'achats'];
+
+        function updateSyncBadge(text, color, bg) {
+            const el = document.getElementById('sync-status');
+            if (!el) return;
+            el.innerHTML = `<i class="fa-solid fa-cloud mr-1"></i>${text}`;
+            el.style.color = color;
+            el.style.background = bg;
+        }
+
+        function initFirebase() {
+            try {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                }
+                db = firebase.database();
+
+                db.ref('.info/connected').on('value', (snap) => {
+                    if (snap.val() === true) {
+                        updateSyncBadge('Synchronisé Cloud', '#34d399', '#064e3b');
+                    } else {
+                        updateSyncBadge('Hors ligne (Local)', '#fbbf24', '#451a03');
+                    }
+                });
+
+                DATA_KEYS.forEach((key) => {
+                    db.ref(`${DB_ROOT}/${key}`).on('value', (snapshot) => {
+                        const cloudVal = snapshot.val();
+                        if (Array.isArray(cloudVal)) {
+                            localStorage.setItem(key, JSON.stringify(cloudVal));
+                            renderKey(key);
+                        } else if (cloudVal && typeof cloudVal === 'object') {
+                            const arr = Object.values(cloudVal);
+                            localStorage.setItem(key, JSON.stringify(arr));
+                            renderKey(key);
+                        } else {
+                            const localArr = JSON.parse(localStorage.getItem(key)) || [];
+                            if (localArr.length > 0) {
+                                db.ref(`${DB_ROOT}/${key}`).set(localArr).catch(() => {});
+                            }
+                        }
+                    });
+                });
+            } catch (err) {
+                console.error("Firebase init error:", err);
+                updateSyncBadge('Mode Local', '#f87171', '#450a0a');
+            }
+        }
+
+        function renderKey(key) {
+            if (key === 'ventes') {
+                renderVentes();
+                updateStatistics();
+            } else if (key === 'sav') {
+                renderSav();
+                updateStatistics();
+            } else if (key === 'iptv') {
+                renderIptv();
+                updateStatistics();
+            } else if (key === 'credits') {
+                renderCredits();
+            } else if (key === 'dettes') {
+                renderDettes();
+            } else if (key === 'achats') {
+                renderAchats();
+            }
+        }
+
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('live-clock').innerText = now.toLocaleString('fr-FR');
+        }, 1000);
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.style.background = 'white';
+                btn.style.color = '#374151';
+                btn.style.border = '1px solid #d1d5db';
+            });
+            const activeBtn = document.querySelector(`[data-target="${tabId}"]`);
+            activeBtn.style.background = '#1e6b43';
+            activeBtn.style.color = 'white';
+            activeBtn.style.border = 'none';
+
+            if(tabId === 'stats') updateStatistics();
+        }
+
+        function setClientComptoir() {
+            document.getElementById('v-client').value = "Client de passage";
+            document.getElementById('v-phone').value = "";
+        }
+
+        function getData(key) { return JSON.parse(localStorage.getItem(key)) || []; }
+
+        function saveData(key, data) {
+            localStorage.setItem(key, JSON.stringify(data));
+            if (db) {
+                updateSyncBadge('Enregistrement...', '#93c5fd', '#1e3a8a');
+                db.ref(`${DB_ROOT}/${key}`).set(data)
+                    .then(() => updateSyncBadge('Synchronisé Cloud', '#34d399', '#064e3b'))
+                    .catch(() => updateSyncBadge('Sauvegarde locale', '#fbbf24', '#451a03'));
+            }
+        }
+
+        let weeklyChartInstance = null;
+        let monthlyChartInstance = null;
+
+        function updateStatistics() {
+            let selectedMonth = document.getElementById('filter-month').value;
+            let ventes = getData('ventes');
+            
+            let totalPeriod = 0;
+            let totalMois = 0;
+            let totalBeneficeMois = 0;
+
+            let daysMap = [0, 0, 0, 0, 0, 0, 0];
+            let dayLabels = [];
+            for (let i = 6; i >= 0; i--) {
+                let d = new Date();
+                d.setDate(d.getDate() - i);
+                dayLabels.push(d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'numeric' }));
+            }
+
+            const now = new Date();
+            const currentMonthStr = (now.getMonth() + 1).toString().padStart(2, '0');
+
+            ventes.forEach(v => {
+                let parts = (v.date || '').split(' ')[0].split('/');
+                if(parts.length === 3) {
+                    let vMonth = parts[1];
+                    let vDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                    let diffDays = Math.floor((now - vDate) / (1000 * 60 * 60 * 24));
+                    let beneficeItem = (parseFloat(v.prix) - parseFloat(v.achat || 0)) * parseInt(v.qte || 1);
+
+                    if (selectedMonth === 'all' || vMonth === selectedMonth) {
+                        totalPeriod += parseFloat(v.prix || 0);
+                    }
+
+                    if (selectedMonth === 'all') {
+                        if (vMonth === currentMonthStr) {
+                            totalBeneficeMois += beneficeItem;
+                        }
+                        if (diffDays >= 0 && diffDays <= 6) {
+                            daysMap[6 - diffDays] += parseFloat(v.prix || 0);
+                        }
+                    } else if (vMonth === selectedMonth) {
+                        totalBeneficeMois += beneficeItem;
+                    }
+
+                    if (vMonth === currentMonthStr) {
+                        totalMois += parseFloat(v.prix || 0);
+                    }
+                }
+            });
+
+            if (selectedMonth !== 'all') {
+                document.getElementById('selected-month-label').innerText = `Mois filtré : ${document.getElementById('filter-month').options[document.getElementById('filter-month').selectedIndex].text}`;
+            } else {
+                document.getElementById('selected-month-label').innerText = "Affichage global / Semaine";
+            }
+
+            document.getElementById('stat-semaine').innerText = totalPeriod.toFixed(2) + ' DH';
+            document.getElementById('stat-mois').innerText = totalMois.toFixed(2) + ' DH';
+            document.getElementById('stat-benefice').innerText = totalBeneficeMois.toFixed(2) + ' DH';
+
+            const ctxWeekly = document.getElementById('weeklyChart').getContext('2d');
+            if (weeklyChartInstance) weeklyChartInstance.destroy();
+            weeklyChartInstance = new Chart(ctxWeekly, {
+                type: 'bar',
+                data: {
+                    labels: dayLabels,
+                    datasets: [{
+                        label: 'Ventes (DH)',
+                        data: daysMap,
+                        backgroundColor: '#1e6b43',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            let savCount = getData('sav').length;
+            let iptvCount = getData('iptv').length;
+            let ventesCount = ventes.length;
+
+            const ctxMonthly = document.getElementById('monthlyChart').getContext('2d');
+            if (monthlyChartInstance) monthlyChartInstance.destroy();
+            monthlyChartInstance = new Chart(ctxMonthly, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Ventes', 'SAV / Réparations', 'IPTV'],
+                    datasets: [{ data: [ventesCount, savCount, iptvCount], backgroundColor: ['#1e6b43', '#2563eb', '#8a1c32'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function openInvoice(id) {
+            let item = getData('ventes').find(v => v.id == id);
+            if(!item) return;
+
+            document.getElementById('inv-number').innerText = `N°: FA-2026-${item.id.toString().slice(-4)}`;
+            document.getElementById('inv-date').innerText = `Date: ${item.date}`;
+            document.getElementById('inv-client').innerText = item.client;
+            document.getElementById('inv-mode').innerText = item.paiement || 'Espèces';
+
+            let unitPrice = (parseFloat(item.prix) / parseInt(item.qte || 1)).toFixed(2);
+
+            document.getElementById('inv-items').innerHTML = `
+                <tr>
+                    <td style="padding: 8px; font-weight: 500; color: #1e293b;">${item.produit}</td>
+                    <td style="padding: 8px; text-align: center;">${item.qte}</td>
+                    <td style="padding: 8px; text-align: right;">${unitPrice} DH</td>
+                    <td style="padding: 8px; text-align: right; font-weight: bold; color: #0f172a;">${item.prix} DH</td>
+                </tr>
+            `;
+            document.getElementById('inv-total').innerText = `${item.prix} DH`;
+            document.getElementById('invoice-modal').style.display = 'flex';
+        }
+
+        function closeInvoice() {
+            document.getElementById('invoice-modal').style.display = 'none';
+        }
+
+        function saveVente(e) {
+            e.preventDefault();
+            let id = document.getElementById('v-id').value;
+            let clientVal = document.getElementById('v-client').value.trim();
+            let phoneVal = document.getElementById('v-phone').value.trim();
+            let produitVal = document.getElementById('v-produit').value;
+            let qteVal = document.getElementById('v-qte').value;
+            let achatVal = parseFloat(document.getElementById('v-achat').value).toFixed(2);
+            let prixVal = parseFloat(document.getElementById('v-prix').value).toFixed(2);
+            let paiementVal = document.getElementById('v-paiement').value;
+
+            let ventes = getData('ventes');
+
+            if(id) {
+                ventes = ventes.map(v => v.id == id ? {...v, client: clientVal, phone: phoneVal, produit: produitVal, qte: qteVal, achat: achatVal, prix: prixVal, paiement: paiementVal} : v);
+                resetVenteForm();
+            } else {
+                let newSale = { 
+                    id: Date.now(), 
+                    date: new Date().toLocaleString('fr-FR'), 
+                    client: clientVal, 
+                    phone: phoneVal, 
+                    produit: produitVal, 
+                    qte: qteVal, 
+                    achat: achatVal, 
+                    prix: prixVal, 
+                    paiement: paiementVal 
+                };
+                ventes.unshift(newSale);
+
+                if (paiementVal === 'Crédit') {
+                    let credits = getData('credits');
+                    credits.unshift({
+                        id: Date.now() + 1,
+                        date: new Date().toLocaleDateString('fr-FR'),
+                        client: clientVal,
+                        phone: phoneVal,
+                        desc: `Achat produit: ${produitVal} (Qté: ${qteVal})`,
+                        montant: prixVal,
+                        paye: false
+                    });
+                    saveData('credits', credits);
+                }
+            }
+            saveData('ventes', ventes);
+            document.getElementById('vente-form').reset();
+            resetVenteForm();
+            renderVentes();
+            renderCredits();
+            updateStatistics();
+        }
+
+        function editVente(id) {
+            let v = getData('ventes').find(item => item.id == id);
+            if(v) {
+                document.getElementById('v-id').value = v.id;
+                document.getElementById('v-client').value = v.client;
+                document.getElementById('v-phone').value = v.phone || '';
+                document.getElementById('v-produit').value = v.produit;
+                document.getElementById('v-qte').value = v.qte;
+                document.getElementById('v-achat').value = v.achat || 0;
+                document.getElementById('v-prix').value = v.prix;
+                document.getElementById('v-paiement').value = v.paiement || 'Espèces';
+                document.getElementById('v-form-title').innerHTML = '<i class="fa-solid fa-pen-to-square text-[#1e6b43] mr-2"></i>Modifier Vente';
+                document.getElementById('v-btn').innerText = 'Mettre à jour';
+            }
+        }
+
+        function resetVenteForm() {
+            document.getElementById('v-id').value = '';
+            document.getElementById('v-form-title').innerHTML = '<i class="fa-solid fa-cart-plus text-[#1e6b43] mr-2"></i>Nouvelle Vente';
+            document.getElementById('v-btn').innerText = 'Valider la Vente';
+            document.getElementById('vente-form').reset();
+        }
+
+        function renderVentes() {
+            let search = document.getElementById('search-ventes').value.toLowerCase();
+            let ventes = getData('ventes').filter(v => v.client.toLowerCase().includes(search) || v.produit.toLowerCase().includes(search));
+            
+            const tbody = document.getElementById('ventes-table');
+            tbody.innerHTML = ventes.map(v => {
+                let benef = ((parseFloat(v.prix) - parseFloat(v.achat || 0)) * parseInt(v.qte || 1)).toFixed(2);
+                let badgePaiement = v.paiement === 'Crédit' ? '<span style="padding: 2px 8px; background: #fee2e2; color: #8a1c32; border-radius: 4px; font-weight: bold; font-size: 0.75rem;">Crédit</span>' : '<span style="padding: 2px 8px; background: #d1fae5; color: #15803d; border-radius: 4px; font-size: 0.75rem;">Espèces</span>';
+                return `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 12px; color: #64748b; font-size: 0.75rem;">${v.date}</td>
+                    <td style="padding: 12px; font-weight: 500; color: #334155;">${v.client}</td>
+                    <td style="padding: 12px;">${v.produit} (${v.qte})</td>
+                    <td style="padding: 12px; font-weight: 600; color: #1e293b;">${v.prix} DH</td>
+                    <td style="padding: 12px;">${badgePaiement}</td>
+                    <td style="padding: 12px; font-weight: bold; color: #059669;">+${benef} DH</td>
+                    <td style="padding: 12px; text-align: center;">
+                        <button onclick="openInvoice(${v.id})" style="background: none; border: none; color: #4f46e5; cursor: pointer; margin-right: 8px;" title="Générer Facture"><i class="fa-solid fa-file-invoice-dollar"></i></button>
+                        <button onclick="editVente(${v.id})" style="background: none; border: none; color: #2563eb; cursor: pointer; margin-right: 8px;" title="Modifier"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteItem('ventes', ${v.id}, renderVentes)" style="background: none; border: none; color: #dc2626; cursor: pointer;" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function saveSav(e) {
+            e.preventDefault();
+            let id = document.getElementById('sav-id').value;
+            let clientVal = document.getElementById('sav-client').value.trim();
+            let phoneVal = document.getElementById('sav-phone').value.trim();
+            let appareilVal = document.getElementById('sav-appareil').value;
+            let panneVal = document.getElementById('sav-panne').value;
+            let prixVal = parseFloat(document.getElementById('sav-prix').value).toFixed(2);
+            let paiementVal = document.getElementById('sav-paiement').value;
+            let statutVal = document.getElementById('sav-statut').value;
+
+            let sav = getData('sav');
+
+            if(id) {
+                sav = sav.map(s => s.id == id ? {...s, client: clientVal, phone: phoneVal, appareil: appareilVal, panne: panneVal, prix: prixVal, paiement: paiementVal, statut: statutVal} : s);
+                resetSavForm();
+            } else {
+                let newSav = {
+                    id: Date.now(),
+                    date: new Date().toLocaleDateString('fr-FR'),
+                    client: clientVal,
+                    phone: phoneVal,
+                    appareil: appareilVal,
+                    panne: panneVal,
+                    prix: prixVal,
+                    paiement: paiementVal,
+                    statut: statutVal
+                };
+                sav.unshift(newSav);
+
+                if (paiementVal === 'Crédit') {
+                    let credits = getData('credits');
+                    credits.unshift({
+                        id: Date.now() + 2,
+                        date: new Date().toLocaleDateString('fr-FR'),
+                        client: clientVal,
+                        phone: phoneVal,
+                        desc: `Réparation SAV: ${appareilVal} (${panneVal})`,
+                        montant: prixVal,
+                        paye: false
+                    });
+                    saveData('credits', credits);
+                }
+            }
+            saveData('sav', sav);
+            document.getElementById('sav-form').reset();
+            resetSavForm();
+            renderSav();
+            renderCredits();
+        }
+
+        function editSav(id) {
+            let s = getData('sav').find(item => item.id == id);
+            if(s) {
+                document.getElementById('sav-id').value = s.id;
+                document.getElementById('sav-client').value = s.client;
+                document.getElementById('sav-phone').value = s.phone || '';
+                document.getElementById('sav-appareil').value = s.appareil;
+                document.getElementById('sav-panne').value = s.panne;
+                document.getElementById('sav-prix').value = s.prix;
+                document.getElementById('sav-paiement').value = s.paiement || 'Payé';
+                document.getElementById('sav-statut').value = s.statut;
+                document.getElementById('sav-form-title').innerHTML = '<i class="fa-solid fa-pen-to-square text-[#1e6b43] mr-2"></i>Modifier SAV';
+                document.getElementById('sav-btn').innerText = 'Mettre à jour';
+            }
+        }
+
+        function resetSavForm() {
+            document.getElementById('sav-id').value = '';
+            document.getElementById('sav-form-title').innerHTML = '<i class="fa-solid fa-wrench text-[#1e6b43] mr-2"></i>Nouvel Appareil en Réparation';
+            document.getElementById('sav-btn').innerText = 'Enregistrer SAV';
+            document.getElementById('sav-form').reset();
+        }
+
+        function renderSav() {
+            let search = document.getElementById('search-sav').value.toLowerCase();
+            let sav = getData('sav').filter(s => s.client.toLowerCase().includes(search) || s.appareil.toLowerCase().includes(search));
+
+            const tbody = document.getElementById('sav-table');
+            tbody.innerHTML = sav.map(s => {
+                let badgePaiement = s.paiement === 'Crédit' ? '<span style="padding: 2px 8px; background: #fee2e2; color: #8a1c32; border-radius: 4px; font-weight: bold; font-size: 0.75rem;">Crédit</span>' : '<span style="padding: 2px 8px; background: #d1fae5; color: #15803d; border-radius: 4px; font-size: 0.75rem;">Payé</span>';
+                let badgeStatut = s.statut === 'Livré' ? 'background: #d1fae5; color: #15803d;' : s.statut === 'Réparé' ? 'background: #dbeafe; color: #1d4ed8;' : 'background: #ffedd5; color: #c2410c;';
+                return `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 12px; color: #64748b; font-size: 0.75rem;">${s.date}</td>
+                    <td style="padding: 12px; font-weight: 500;">${s.client}</td>
+                    <td style="padding: 12px;">${s.appareil}</td>
+                    <td style="padding: 12px;">${s.panne}</td>
+                    <td style="padding: 12px; font-weight: 600;">${s.prix} DH</td>
+                    <td style="padding: 12px;">${badgePaiement}</td>
+                    <td style="padding: 12px;"><span style="padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; ${badgeStatut}">${s.statut}</span></td>
+                    <td style="padding: 12px; text-align: center;">
+                        <button onclick="editSav(${s.id})" style="background: none; border: none; color: #2563eb; cursor: pointer; margin-right: 8px;"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteItem('sav', ${s.id}, renderSav)" style="background: none; border: none; color: #dc2626; cursor: pointer;"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function saveIptv(e) {
+            e.preventDefault();
+            let id = document.getElementById('iptv-id').value;
+            let iptv = getData('iptv');
+            if(id) {
+                iptv = iptv.map(i => i.id == id ? {...i, client: document.getElementById('iptv-client').value, serveur: document.getElementById('iptv-serveur').value, duree: document.getElementById('iptv-duree').value, prix: parseFloat(document.getElementById('iptv-prix').value).toFixed(2), exp: document.getElementById('iptv-exp').value} : i);
+                resetIptvForm();
+            } else {
+                iptv.unshift({ id: Date.now(), client: document.getElementById('iptv-client').value, serveur: document.getElementById('iptv-serveur').value, duree: document.getElementById('iptv-duree').value, prix: parseFloat(document.getElementById('iptv-prix').value).toFixed(2), exp: document.getElementById('iptv-exp').value });
+            }
+            saveData('iptv', iptv);
+            document.getElementById('iptv-form').reset();
+            resetIptvForm();
+            renderIptv();
+        }
+        function editIptv(id) {
+            let i = getData('iptv').find(item => item.id == id);
+            if(i) {
+                document.getElementById('iptv-id').value = i.id;
+                document.getElementById('iptv-client').value = i.client;
+                document.getElementById('iptv-serveur').value = i.serveur;
+                document.getElementById('iptv-duree').value = i.duree;
+                document.getElementById('iptv-prix').value = i.prix;
+                document.getElementById('iptv-exp').value = i.exp;
+                document.getElementById('iptv-form-title').innerHTML = '<i class="fa-solid fa-pen-to-square text-[#1e6b43] mr-2"></i>Modifier Abonnement';
+                document.getElementById('iptv-btn').innerText = 'Mettre à jour';
+            }
+        }
+        function resetIptvForm() {
+            document.getElementById('iptv-id').value = '';
+            document.getElementById('iptv-form-title').innerHTML = '<i class="fa-solid fa-satellite-dish text-[#1e6b43] mr-2"></i>Nouvel Abonnement IPTV';
+            document.getElementById('iptv-btn').innerText = 'Ajouter Abonnement';
+            document.getElementById('iptv-form').reset();
+        }
+        function renderIptv() {
+            let search = document.getElementById('search-iptv').value.toLowerCase();
+            let iptv = getData('iptv').filter(i => i.client.toLowerCase().includes(search) || i.serveur.toLowerCase().includes(search));
+
+            const tbody = document.getElementById('iptv-table');
+            let today = new Date();
+            tbody.innerHTML = iptv.map(i => {
+                let expDate = new Date(i.exp);
+                let diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+                let rowStyle = "";
+                let alertBadge = "";
+                if (diffDays < 0) {
+                    rowStyle = "background: #fef2f2; color: #991b1b; font-weight: bold;";
+                    alertBadge = `<span style="margin-left: 8px; padding: 2px 6px; background: #dc2626; color: white; border-radius: 4px; font-size: 0.65rem;">Expiré</span>`;
+                } else if (diffDays <= 3) {
+                    rowStyle = "background: #fff7ed; color: #9a3412; font-weight: bold;";
+                    alertBadge = `<span style="margin-left: 8px; padding: 2px 6px; background: #f97316; color: white; border-radius: 4px; font-size: 0.65rem;">Expire (${diffDays}j)</span>`;
+                }
+
+                return `
+                <tr style="border-bottom: 1px solid #f1f5f9; ${rowStyle}">
+                    <td style="padding: 12px; font-weight: 500;">${i.client}</td>
+                    <td style="padding: 12px;">${i.serveur} (${i.duree} mois)</td>
+                    <td style="padding: 12px; font-weight: 600; color: #1e6b43;">${i.prix} DH</td>
+                    <td style="padding: 12px; font-family: monospace;">${i.exp} ${alertBadge}</td>
+                    <td style="padding: 12px; text-align: center;">
+                        <button onclick="editIptv(${i.id})" style="background: none; border: none; color: #2563eb; cursor: pointer; margin-right: 8px;"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteItem('iptv', ${i.id}, renderIptv)" style="background: none; border: none; color: #dc2626; cursor: pointer;"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function saveCredit(e) {
+            e.preventDefault();
+            let id = document.getElementById('c-id').value;
+            let credits = getData('credits');
+            let phoneVal = document.getElementById('c-phone').value.trim();
+
+            if(id) {
+                credits = credits.map(c => c.id == id ? {...c, client: document.getElementById('c-client').value, phone: phoneVal, desc: document.getElementById('c-desc').value, montant: parseFloat(document.getElementById('c-montant').value).toFixed(2)} : c);
+                resetCreditForm();
+            } else {
+                credits.unshift({ id: Date.now(), date: new Date().toLocaleDateString('fr-FR'), client: document.getElementById('c-client').value, phone: phoneVal, desc: document.getElementById('c-desc').value, montant: parseFloat(document.getElementById('c-montant').value).toFixed(2), paye: false });
+            }
+            saveData('credits', credits);
+            document.getElementById('credit-form').reset();
+            resetCreditForm();
+            renderCredits();
+        }
+        function editCredit(id) {
+            let c = getData('credits').find(item => item.id == id);
+            if(c) {
+                document.getElementById('c-id').value = c.id;
+                document.getElementById('c-client').value = c.client;
+                document.getElementById('c-phone').value = c.phone || '';
+                document.getElementById('c-desc').value = c.desc;
+                document.getElementById('c-montant').value = c.montant;
+                document.getElementById('credit-form-title').innerHTML = '<i class="fa-solid fa-pen-to-square text-[#8a1c32] mr-2"></i>Modifier Crédit';
+                document.getElementById('c-btn').innerText = 'Mettre à jour';
+            }
+        }
+        function resetCreditForm() {
+            document.getElementById('c-id').value = '';
+            document.getElementById('credit-form-title').innerHTML = '<i class="fa-solid fa-hand-holding-dollar text-[#8a1c32] mr-2"></i>ناس كيتسالوني (Crédits Clients)';
+            document.getElementById('c-btn').innerText = 'Ajouter Crédit Client';
+            document.getElementById('credit-form').reset();
+        }
+        function toggleCredit(id) {
+            let credits = getData('credits');
+            credits = credits.map(c => c.id === id ? {...c, paye: !c.paye} : c);
+            saveData('credits', credits);
+            renderCredits();
+        }
+        function sendWhatsAppClient(clientName, montant, phone) {
+            let msg = `Bonjour ${clientName}, nous vous rappelons que vous avez un solde impayé de ${montant} DH chez Electro Al-Quds. Merci de passer régler votre dû.`;
+            window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(msg)}`, '_blank');
+        }
+        function renderCredits() {
+            const tbody = document.getElementById('credits-table');
+            tbody.innerHTML = getData('credits').map(c => `
+                <tr style="border-bottom: 1px solid #f1f5f9; ${c.paye ? 'background: #f0fdf4; opacity: 0.6; text-decoration: line-through;' : ''}">
+                    <td style="padding: 8px; font-size: 0.75rem;">
+                        <span style="color: #94a3b8;">${c.date || '-'}</span>
+                        <div style="font-weight: bold; color: #1e293b;">${c.client}</div>
+                        <div style="color: #64748b; font-weight: normal;">${c.desc}</div>
+                    </td>
+                    <td style="padding: 8px; font-weight: 600; color: #8a1c32;">${c.montant} DH</td>
+                    <td style="padding: 8px; text-align: center;">
+                        <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
+                            <button onclick="toggleCredit(${c.id})" style="padding: 4px 8px; border-radius: 4px; border: none; font-size: 0.7rem; cursor: pointer; ${c.paye ? 'background: #16a34a; color: white;' : 'background: #fee2e2; color: #8a1c32; font-weight: bold;'}">${c.paye ? 'Payé' : 'En attente'}</button>
+                            ${c.phone ? `<button onclick="sendWhatsAppClient('${c.client}', '${c.montant}', '${c.phone}')" style="background: #22c55e; color: white; border: none; padding: 4px 6px; border-radius: 4px; cursor: pointer;" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></button>` : ''}
+                            <button onclick="editCredit(${c.id})" style="background: none; border: none; color: #2563eb; cursor: pointer;" title="Modifier"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteItem('credits', ${c.id}, renderCredits)" style="background: none; border: none; color: #dc2626; cursor: pointer;" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function saveDette(e) {
+            e.preventDefault();
+            let id = document.getElementById('d-id').value;
+            let dettes = getData('dettes');
+            let phoneVal = document.getElementById('d-phone').value.trim();
+
+            if(id) {
+                dettes = dettes.map(d => d.id == id ? {...d, fournisseur: document.getElementById('d-fournisseur').value, phone: phoneVal, desc: document.getElementById('d-desc').value, montant: parseFloat(document.getElementById('d-montant').value).toFixed(2)} : d);
+                resetDetteForm();
+            } else {
+                dettes.unshift({ id: Date.now(), date: new Date().toLocaleDateString('fr-FR'), fournisseur: document.getElementById('d-fournisseur').value, phone: phoneVal, desc: document.getElementById('d-desc').value, montant: parseFloat(document.getElementById('d-montant').value).toFixed(2), paye: false });
+            }
+            saveData('dettes', dettes);
+            document.getElementById('dette-form').reset();
+            resetDetteForm();
+            renderDettes();
+        }
+        function editDette(id) {
+            let d = getData('dettes').find(item => item.id == id);
+            if(d) {
+                document.getElementById('d-id').value = d.id;
+                document.getElementById('d-fournisseur').value = d.fournisseur;
+                document.getElementById('d-phone').value = d.phone || '';
+                document.getElementById('d-desc').value = d.desc;
+                document.getElementById('d-montant').value = d.montant;
+                document.getElementById('dette-form-title').innerHTML = '<i class="fa-solid fa-pen-to-square text-orange-600 mr-2"></i>Modifier Dette';
+                document.getElementById('d-btn').innerText = 'Mettre à jour';
+            }
+        }
+        function resetDetteForm() {
+            document.getElementById('d-id').value = '';
+            document.getElementById('dette-form-title').innerHTML = '<i class="fa-solid fa-file-invoice-dollar text-orange-600 mr-2"></i>ناس كنتسالهم (Dettes Fournisseurs)';
+            document.getElementById('d-btn').innerText = 'Ajouter Dette Fournisseur';
+            document.getElementById('dette-form').reset();
+        }
+        function toggleDette(id) {
+            let dettes = getData('dettes');
+            dettes = dettes.map(d => d.id === id ? {...d, paye: !d.paye} : d);
+            saveData('dettes', dettes);
+            renderDettes();
+        }
+        function sendWhatsAppFournisseur(fournisseurName, montant, phone) {
+            let msg = `Bonjour ${fournisseurName}, nous avons un montant de ${montant} DH à vous régler de la part d'Electro Al-Quds.`;
+            window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(msg)}`, '_blank');
+        }
+        function renderDettes() {
+            const tbody = document.getElementById('dettes-table');
+            tbody.innerHTML = getData('dettes').map(d => `
+                <tr style="border-bottom: 1px solid #f1f5f9; ${d.paye ? 'background: #f0fdf4; opacity: 0.6; text-decoration: line-through;' : ''}">
+                    <td style="padding: 8px; font-size: 0.75rem;">
+                        <span style="color: #94a3b8;">${d.date || '-'}</span>
+                        <div style="font-weight: bold; color: #1e293b;">${d.fournisseur}</div>
+                        <div style="color: #64748b; font-weight: normal;">${d.desc}</div>
+                    </td>
+                    <td style="padding: 8px; font-weight: 600; color: #ea580c;">${d.montant} DH</td>
+                    <td style="padding: 8px; text-align: center;">
+                        <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
+                            <button onclick="toggleDette(${d.id})" style="padding: 4px 8px; border-radius: 4px; border: none; font-size: 0.7rem; cursor: pointer; ${d.paye ? 'background: #16a34a; color: white;' : 'background: #ffedd5; color: #c2410c; font-weight: bold;'}">${d.paye ? 'Payé' : 'En attente'}</button>
+                            ${d.phone ? `<button onclick="sendWhatsAppFournisseur('${d.fournisseur}', '${d.montant}', '${d.phone}')" style="background: #22c55e; color: white; border: none; padding: 4px 6px; border-radius: 4px; cursor: pointer;" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></button>` : ''}
+                            <button onclick="editDette(${d.id})" style="background: none; border: none; color: #2563eb; cursor: pointer;" title="Modifier"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteItem('dettes', ${d.id}, renderDettes)" style="background: none; border: none; color: #dc2626; cursor: pointer;" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function saveAchat(e) {
+            e.preventDefault();
+            let id = document.getElementById('a-id').value;
+            let achats = getData('achats');
+            if(id) {
+                achats = achats.map(a => a.id == id ? {...a, fournisseur: document.getElementById('a-fournisseur').value, qte: document.getElementById('a-qte').value, prix: parseFloat(document.getElementById('a-prix').value).toFixed(2)} : a);
+                resetAchatForm();
+            } else {
+                achats.unshift({ id: Date.now(), date: new Date().toLocaleDateString('fr-FR'), fournisseur: document.getElementById('a-fournisseur').value, qte: document.getElementById('a-qte').value, prix: parseFloat(document.getElementById('a-prix').value).toFixed(2) });
+            }
+            saveData('achats', achats);
+            document.getElementById('achat-form').reset();
+            resetAchatForm();
+            renderAchats();
+        }
+        function editAchat(id) {
+            let a = getData('achats').find(item => item.id == id);
+            if(a) {
+                document.getElementById('a-id').value = a.id;
+                document.getElementById('a-fournisseur').value = a.fournisseur;
+                document.getElementById('a-qte').value = a.qte;
+                document.getElementById('a-prix').value = a.prix;
+                document.getElementById('achat-form-title').innerHTML = '<i class="fa-solid fa-pen-to-square text-[#1e6b43] mr-2"></i>Modifier Achat';
+                document.getElementById('a-btn').innerText = 'Mettre à jour';
+            }
+        }
+        function resetAchatForm() {
+            document.getElementById('a-id').value = '';
+            document.getElementById('achat-form-title').innerHTML = '<i class="fa-solid fa-boxes-stacked text-[#1e6b43] mr-2"></i>Nouvel Achat / Stock';
+            document.getElementById('a-btn').innerText = "Enregistrer l'Achat";
+            document.getElementById('achat-form').reset();
+        }
+        function renderAchats() {
+            let search = document.getElementById('search-achats').value.toLowerCase();
+            let achats = getData('achats').filter(a => a.fournisseur.toLowerCase().includes(search));
+
+            const tbody = document.getElementById('achats-table');
+            tbody.innerHTML = achats.map(a => `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 12px; color: #64748b; font-size: 0.75rem;">${a.date}</td>
+                    <td style="padding: 12px; font-weight: 500;">${a.fournisseur}</td>
+                    <td style="padding: 12px;">${a.qte}</td>
+                    <td style="padding: 12px; font-weight: 600; color: #ea580c;">${a.prix} DH</td>
+                    <td style="padding: 12px; text-align: center;">
+                        <button onclick="editAchat(${a.id})" style="background: none; border: none; color: #2563eb; cursor: pointer; margin-right: 8px;"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteItem('achats', ${a.id}, renderAchats)" style="background: none; border: none; color: #dc2626; cursor: pointer;"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function deleteItem(key, id, renderFunc) {
+            if(confirm("Voulez-vous vraiment supprimer cet élément ?")) {
+                let data = getData(key).filter(item => item.id !== id);
+                saveData(key, data);
+                renderFunc();
+                if(key === 'ventes') updateStatistics();
+            }
+        }
+
+        window.onload = function() {
+            renderVentes();
+            renderSav();
+            renderIptv();
+            renderCredits();
+            renderDettes();
+            renderAchats();
+            updateStatistics();
+            initFirebase();
+        };
+    </script>
+</body>
+</html>
